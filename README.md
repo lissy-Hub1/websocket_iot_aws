@@ -14,7 +14,9 @@ Thunder Client / Swagger  →  HTTPS/WSS (Caddy, 443)  →  FastAPI en EC2 (127.
 
 ## Aplicación de CONTROL (práctica 4.1)
 
-El frontend publicado en GitHub Pages está en [`docs/`](docs/README.md). Para que pueda llamar a esta API, define `CORS_ORIGINS` en `.env` con el origen de Pages.
+El frontend vive en su propio repositorio: **https://github.com/lissy-Hub1/websocket_iot**
+(publicado en https://lissy-hub1.github.io/websocket_iot/). Para que pueda llamar a esta API,
+define `CORS_ORIGINS=https://lissy-hub1.github.io` en `.env`.
 
 ## Reglas de negocio
 
