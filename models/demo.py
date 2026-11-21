@@ -18,6 +18,8 @@ class Demo(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     activo: bool
+    tipo: Optional[str] = None            # 4.3: FABRICA | PRIVADA
+    id_propietario: Optional[int] = None  # 4.3: dueño de una demo PRIVADA
 
 
 class MovimientoDemoCrear(BaseModel):

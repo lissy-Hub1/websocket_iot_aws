@@ -22,6 +22,11 @@ class Settings:
     db_connect_timeout: int
     api_key: str
     db_ssl_ca: str | None = None  # ruta al bundle de CA de RDS (opcional)
+    # --- 4.3: inicio de sesión con Google, roles y sesiones ---
+    google_client_id: str | None = None          # Client ID web de Google (es público, no es secreto)
+    admin_emails: tuple[str, ...] = ()           # correos que entran como ADMINISTRADOR
+    sesion_minutos: int = 480                    # duración de la sesión de Admin/Usuario
+    invitado_minutos: int = 5                    # duración de la prueba de Invitado
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,6 +46,12 @@ class Settings:
             db_connect_timeout=int(os.getenv("DB_CONNECT_TIMEOUT", "5")),
             api_key=requerida("API_KEY"),
             db_ssl_ca=os.getenv("DB_SSL_CA") or None,
+            google_client_id=os.getenv("GOOGLE_CLIENT_ID") or None,
+            admin_emails=tuple(
+                e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
+            ),
+            sesion_minutos=int(os.getenv("SESION_MINUTOS", "480")),
+            invitado_minutos=int(os.getenv("INVITADO_MINUTOS", "5")),
         )
 
 

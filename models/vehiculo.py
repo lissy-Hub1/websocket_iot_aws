@@ -27,6 +27,10 @@ class Vehiculo(BaseModel):
     microcontrolador: Optional[str] = None
     fecha_registro: datetime
     activo: bool
+    # 4.3: la fila es una UNIDAD física de un modelo comercial
+    id_modelo: Optional[int] = None
+    numero_serie: Optional[str] = None
+    estado_comercial: Optional[str] = None
 
 
 class VehiculoDetalle(Vehiculo):

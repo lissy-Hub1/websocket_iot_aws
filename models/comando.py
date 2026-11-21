@@ -20,3 +20,4 @@ class Comando(BaseModel):
     codigo: int
     descripcion: Optional[str] = None
     activo: bool
+    permitido_invitado: Optional[bool] = None  # 4.3

@@ -3,7 +3,7 @@ from typing import Any
 
 import pymysql.cursors
 
-# Lista blanca: solo se pueden invocar los 21 SP del esquema vehiculo_iot.
+# Lista blanca: los 21 SP originales del esquema vehiculo_iot + los de la práctica 4.3.
 PROCEDIMIENTOS_PERMITIDOS = frozenset(
     {
         "sp_crear_vehiculo", "sp_obtener_vehiculos", "sp_obtener_vehiculo",
@@ -15,6 +15,17 @@ PROCEDIMIENTOS_PERMITIDOS = frozenset(
         "sp_crear_demo", "sp_obtener_demos", "sp_actualizar_demo", "sp_eliminar_demo",
         "sp_agregar_movimiento_demo", "sp_obtener_movimientos_demo",
         "sp_actualizar_movimiento_demo", "sp_eliminar_movimiento_demo",
+        # --- práctica 4.3 (bd_vehiculo_iot_4_3.sql) ---
+        "sp_acceso_google", "sp_ins_sesion", "sp_validar_sesion", "sp_cerrar_sesion",
+        "sp_ins_usuario", "sp_upd_usuario", "sp_obtener_usuarios",
+        "sp_ins_modelo", "sp_upd_modelo", "sp_obtener_modelos",
+        "sp_ins_unidad", "sp_upd_unidad", "sp_obtener_unidades",
+        "sp_asignar_unidad", "sp_revocar_unidad", "sp_mis_vehiculos", "sp_permiso_unidad",
+        "sp_otorgar_soporte", "sp_revocar_soporte",
+        "sp_catalogo_publico", "sp_iniciar_sesion_invitado", "sp_validar_sesion_invitado",
+        "sp_terminar_sesion_invitado", "sp_comandos_invitado", "sp_vencer_invitados", "sp_upd_comando_invitado",
+        "sp_obtener_demos_usuario", "sp_crear_demo_editor", "sp_vaciar_pasos_demo",
+        "sp_ins_auditoria", "sp_obtener_auditoria", "sp_dashboard", "sp_salud",
     }
 )
 

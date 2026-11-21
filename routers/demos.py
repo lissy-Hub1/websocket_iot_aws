@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from dependencies import Contenedor, get_contenedor
@@ -7,7 +7,7 @@ from models.demo import (
     MovimientoDemo, MovimientoDemoActualizar, MovimientoDemoCrear,
 )
 from models.respuestas import Creado, Mensaje
-from security import exigir_api_key
+from autorizacion import INVITADO, Identidad, demo_visible, exigir_admin, permiso_unidad
 
 from .comun import CON_404, E409, PROTEGIDO
 
@@ -20,8 +20,10 @@ CON_409 = {**CON_404, 409: E409}
     summary="Listar las DEMO de un vehículo",
     description="**Stored Procedures:** `sp_obtener_vehiculo`, `sp_obtener_demos`.",
 )
-async def listar(id_vehiculo: int, c: Contenedor = Depends(get_contenedor)):
-    return await run_in_threadpool(c.demos.listar, id_vehiculo)
+async def listar(id_vehiculo: int, ident: Identidad = Depends(permiso_unidad("ver")),
+                 c: Contenedor = Depends(get_contenedor)):
+    demos = await run_in_threadpool(c.demos.listar, id_vehiculo)
+    return [d for d in demos if demo_visible(d, ident)]  # 4.3: las PRIVADAS solo las ve su dueño
 
 
 @router.post(
@@ -29,7 +31,8 @@ async def listar(id_vehiculo: int, c: Contenedor = Depends(get_contenedor)):
     summary="Crear una DEMO",
     description="**Stored Procedures:** `sp_obtener_vehiculo`, `sp_crear_demo`.",
 )
-async def crear(id_vehiculo: int, datos: DemoCrear, c: Contenedor = Depends(get_contenedor)):
+async def crear(id_vehiculo: int, datos: DemoCrear, _: Identidad = Depends(exigir_admin),
+                c: Contenedor = Depends(get_contenedor)):
     nuevo = await run_in_threadpool(c.demos.crear, id_vehiculo, datos)
     return Creado(id=nuevo, mensaje="DEMO creada")
 
@@ -40,15 +43,15 @@ async def crear(id_vehiculo: int, datos: DemoCrear, c: Contenedor = Depends(get_
     description="**Stored Procedures:** `sp_obtener_demos` (verifica pertenencia), `sp_actualizar_demo`.",
 )
 async def actualizar(id_vehiculo: int, id_demo: int, datos: DemoActualizar,
-                     c: Contenedor = Depends(get_contenedor)):
+                     _: Identidad = Depends(exigir_admin), c: Contenedor = Depends(get_contenedor)):
     await run_in_threadpool(c.demos.actualizar, id_vehiculo, id_demo, datos)
     return Mensaje(mensaje="DEMO actualizada")
 
 
 @router.post(
     "/{id_demo}/eliminar", response_model=Mensaje, responses=PROTEGIDO,
-    dependencies=[Depends(exigir_api_key)],
-    summary="Eliminar una DEMO (requiere X-API-Key)",
+    dependencies=[Depends(exigir_admin)],
+    summary="Eliminar una DEMO (solo Administrador o X-API-Key)",
     description="**Stored Procedures:** `sp_obtener_demos`, `sp_eliminar_demo` (borra en cascada sus movimientos).",
 )
 async def eliminar(id_vehiculo: int, id_demo: int, c: Contenedor = Depends(get_contenedor)):
@@ -62,7 +65,9 @@ async def eliminar(id_vehiculo: int, id_demo: int, c: Contenedor = Depends(get_c
     summary="Consultar los movimientos ordenados de una DEMO",
     description="**Stored Procedures:** `sp_obtener_demos`, `sp_obtener_movimientos_demo`. Ordenados por `orden`.",
 )
-async def listar_movimientos(id_vehiculo: int, id_demo: int, c: Contenedor = Depends(get_contenedor)):
+async def listar_movimientos(id_vehiculo: int, id_demo: int, ident: Identidad = Depends(permiso_unidad("ver")),
+                             c: Contenedor = Depends(get_contenedor)):
+    await _exigir_demo_visible(c, id_vehiculo, id_demo, ident)
     return await run_in_threadpool(c.demos.listar_movimientos, id_vehiculo, id_demo)
 
 
@@ -73,7 +78,7 @@ async def listar_movimientos(id_vehiculo: int, id_demo: int, c: Contenedor = Dep
     "El comando debe pertenecer al vehículo; 409 si el `orden` ya existe en la DEMO.",
 )
 async def agregar_movimiento(id_vehiculo: int, id_demo: int, datos: MovimientoDemoCrear,
-                             c: Contenedor = Depends(get_contenedor)):
+                             _: Identidad = Depends(exigir_admin), c: Contenedor = Depends(get_contenedor)):
     await run_in_threadpool(c.demos.agregar_movimiento, id_vehiculo, id_demo, datos)
     return Mensaje(mensaje="Movimiento agregado a la DEMO")
 
@@ -84,15 +89,16 @@ async def agregar_movimiento(id_vehiculo: int, id_demo: int, datos: MovimientoDe
     description="**Stored Procedures:** `sp_obtener_movimientos_demo` (verifica pertenencia), `sp_actualizar_movimiento_demo`.",
 )
 async def actualizar_movimiento(id_vehiculo: int, id_demo: int, id_demo_movimiento: int,
-                                datos: MovimientoDemoActualizar, c: Contenedor = Depends(get_contenedor)):
+                                datos: MovimientoDemoActualizar, _: Identidad = Depends(exigir_admin),
+                                c: Contenedor = Depends(get_contenedor)):
     await run_in_threadpool(c.demos.actualizar_movimiento, id_vehiculo, id_demo, id_demo_movimiento, datos)
     return Mensaje(mensaje="Movimiento de la DEMO actualizado")
 
 
 @router.post(
     "/{id_demo}/movimientos/{id_demo_movimiento}/eliminar", response_model=Mensaje, responses=PROTEGIDO,
-    dependencies=[Depends(exigir_api_key)],
-    summary="Eliminar un movimiento de la DEMO (requiere X-API-Key)",
+    dependencies=[Depends(exigir_admin)],
+    summary="Eliminar un movimiento de la DEMO (solo Administrador o X-API-Key)",
     description="**Stored Procedures:** `sp_obtener_movimientos_demo`, `sp_eliminar_movimiento_demo`.",
 )
 async def eliminar_movimiento(id_vehiculo: int, id_demo: int, id_demo_movimiento: int,
@@ -105,8 +111,7 @@ async def eliminar_movimiento(id_vehiculo: int, id_demo: int, id_demo_movimiento
 @router.post(
     "/{id_demo}/iniciar", response_model=DemoIniciada, status_code=202,
     responses={**PROTEGIDO, 409: E409},
-    dependencies=[Depends(exigir_api_key)],
-    summary="Iniciar una DEMO y transmitirla por WebSocket (requiere X-API-Key)",
+    summary="Iniciar una DEMO y transmitirla por WebSocket (requiere permiso para operar la unidad)",
     description=(
         "Responde `202` de inmediato y ejecuta la DEMO en segundo plano.\n\n"
         "**Stored Procedures:** `sp_obtener_vehiculo`, `sp_obtener_demos`, `sp_obtener_movimientos_demo`, "
@@ -116,15 +121,23 @@ async def eliminar_movimiento(id_vehiculo: int, id_demo: int, id_demo_movimiento
         "409 si el vehículo ya tiene una DEMO en ejecución, está inactivo, la DEMO está inactiva o sin movimientos."
     ),
 )
-async def iniciar(id_vehiculo: int, id_demo: int, c: Contenedor = Depends(get_contenedor)):
+async def iniciar(id_vehiculo: int, id_demo: int, ident: Identidad = Depends(permiso_unidad("operar")),
+                  c: Contenedor = Depends(get_contenedor)):
+    if ident.tipo == INVITADO:
+        raise HTTPException(status_code=403, detail="La prueba de Invitado no incluye DEMO")
+    await _exigir_demo_visible(c, id_vehiculo, id_demo, ident)
+    espera = c.control.otro_operando(id_vehiculo, ident.clave_control)
+    if espera is not None:
+        raise HTTPException(status_code=409, detail=f"Otra sesión está operando esta unidad. Intenta en {espera} s.")
+    c.control.marcar(id_vehiculo, ident.clave_control)
     total = await c.runner.iniciar(id_vehiculo, id_demo)
     return DemoIniciada(id_vehiculo=id_vehiculo, id_demo=id_demo, total_movimientos=total)
 
 
 @router.post(
     "/cancelar", response_model=Mensaje, responses=PROTEGIDO,
-    dependencies=[Depends(exigir_api_key)],
-    summary="Cancelar la DEMO en ejecución del vehículo (requiere X-API-Key)",
+    dependencies=[Depends(permiso_unidad("operar"))],
+    summary="Cancelar la DEMO en ejecución del vehículo (requiere permiso para operar la unidad)",
     description="Suspende de inmediato los movimientos posteriores y emite `demo_cancelada` por WebSocket. "
     "Si el catálogo tiene un comando activo llamado `DETENER`, lo deja como último comando con "
     "`sp_actualizar_estado` (paro seguro, sin historial). 404 si no hay DEMO en ejecución.",
@@ -132,3 +145,10 @@ async def iniciar(id_vehiculo: int, id_demo: int, c: Contenedor = Depends(get_co
 async def cancelar(id_vehiculo: int, c: Contenedor = Depends(get_contenedor)):
     id_demo = await c.runner.cancelar(id_vehiculo)
     return Mensaje(mensaje=f"DEMO {id_demo} cancelada")
+
+
+async def _exigir_demo_visible(c: Contenedor, id_vehiculo: int, id_demo: int, ident: Identidad) -> None:
+    """4.3: una demo PRIVADA ajena se trata como inexistente (no se revela)."""
+    demos = await run_in_threadpool(c.demos.listar, id_vehiculo)
+    if not any(d["id_demo"] == id_demo and demo_visible(d, ident) for d in demos):
+        raise HTTPException(status_code=404, detail=f"La DEMO {id_demo} no existe para el vehículo {id_vehiculo}")
