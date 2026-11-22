@@ -38,6 +38,9 @@ class PlataformaRepository:
     def actualizar_usuario(self, id_usuario, nombre, rol, activo) -> dict:
         return self._una("sp_upd_usuario", id_usuario, nombre, rol, activo)
 
+    def eliminar_usuario(self, id_usuario) -> dict:
+        return self._una("sp_del_usuario", id_usuario)
+
     def usuarios(self) -> list[dict]:
         return self._sp.consultar("sp_obtener_usuarios")
 

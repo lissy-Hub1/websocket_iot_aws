@@ -17,7 +17,7 @@ PROCEDIMIENTOS_PERMITIDOS = frozenset(
         "sp_actualizar_movimiento_demo", "sp_eliminar_movimiento_demo",
         # --- práctica 4.3 (bd_vehiculo_iot_4_3.sql) ---
         "sp_acceso_google", "sp_ins_sesion", "sp_validar_sesion", "sp_cerrar_sesion",
-        "sp_ins_usuario", "sp_upd_usuario", "sp_obtener_usuarios",
+        "sp_ins_usuario", "sp_upd_usuario", "sp_del_usuario", "sp_obtener_usuarios",
         "sp_ins_modelo", "sp_upd_modelo", "sp_obtener_modelos",
         "sp_ins_unidad", "sp_upd_unidad", "sp_obtener_unidades",
         "sp_asignar_unidad", "sp_revocar_unidad", "sp_mis_vehiculos", "sp_permiso_unidad",

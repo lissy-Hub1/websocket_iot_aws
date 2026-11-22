@@ -200,3 +200,20 @@ async def editar_usuario(id_usuario: int, d: UsuarioActualizar, ident: Identidad
                   detalle={"rol": d.rol, "activo": d.activo})
     await c.registro.cerrar_usuario(id_usuario, "Tu cuenta cambió; vuelve a iniciar sesión")
     return Mensaje(mensaje="Cuenta actualizada")
+
+
+@router.delete("/usuarios/{id_usuario}", response_model=Mensaje, responses=R_EDIT,
+               summary="Eliminar una cuenta sin historial",
+               description="**SP:** `sp_del_usuario`. Solo borra cuentas que nunca tuvieron unidades, demos ni soporte "
+               "(p. ej. un correo mal escrito). Si tiene historial responde 409: usa la baja lógica "
+               "(`PUT /admin/usuarios/{id}` con `activo=false`). No puedes eliminar tu propia cuenta.")
+async def eliminar_usuario(id_usuario: int, ident: Identidad = Depends(exigir_admin),
+                           c: Contenedor = Depends(get_contenedor)):
+    if ident.id_usuario == id_usuario:
+        raise HTTPException(status_code=409, detail="No puedes eliminar tu propia cuenta")
+    await _operar(c, ident, "USUARIO_ELIMINAR", "usuario", id_usuario, c.plataforma.eliminar_usuario, id_usuario,
+                  errores={"1": (404, "La cuenta no existe"),
+                           "2": (409, "Debe quedar al menos un Administrador activo"),
+                           "3": (409, "La cuenta tiene historial (unidades, demos o soporte): dala de baja en lugar de eliminarla")})
+    await c.registro.cerrar_usuario(id_usuario, "Tu cuenta fue eliminada")
+    return Mensaje(mensaje="Cuenta eliminada")
